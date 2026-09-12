@@ -14,7 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      matches: {
+        Row: {
+          away_team: string
+          created_at: string
+          home_team: string
+          id: string
+          match_date: string | null
+          venue: string | null
+        }
+        Insert: {
+          away_team: string
+          created_at?: string
+          home_team: string
+          id?: string
+          match_date?: string | null
+          venue?: string | null
+        }
+        Update: {
+          away_team?: string
+          created_at?: string
+          home_team?: string
+          id?: string
+          match_date?: string | null
+          venue?: string | null
+        }
+        Relationships: []
+      }
+      photos: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          match_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          match_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          match_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photos_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
