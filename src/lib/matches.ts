@@ -120,7 +120,7 @@ export async function getLogos(matches: Match[]) {
     [m.home_logo_path, m.away_logo_path].filter(Boolean as never as (v: string | null) => v is string),
   );
   const byPath = await signPhotoUrls(paths);
-  const logos: Record<string, { home?: string; away?: string }> = {};
+  const logos: Record<string, { home?: string | undefined; away?: string | undefined }> = {};
   for (const m of matches) {
     logos[m.id] = {
       home: m.home_logo_path ? byPath[m.home_logo_path] : undefined,

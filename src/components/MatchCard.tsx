@@ -10,10 +10,10 @@ import {
 interface MatchCardProps {
   match: Match;
   photoCount: number;
-  coverUrl?: string;
-  homeLogoUrl?: string;
-  awayLogoUrl?: string;
-  onDelete?: () => void;
+  coverUrl?: string | undefined;
+  homeLogoUrl?: string | undefined;
+  awayLogoUrl?: string | undefined;
+  onDelete?: (() => void) | undefined;
 }
 
 function statusStyles(status: string) {
@@ -23,7 +23,7 @@ function statusStyles(status: string) {
   return "bg-booking text-background";
 }
 
-function TeamCrest({ url, name }: { url?: string; name: string }) {
+function TeamCrest({ url, name }: { url?: string | undefined; name: string }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
       {url ? (
