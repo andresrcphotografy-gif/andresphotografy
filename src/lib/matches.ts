@@ -1,11 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export type MatchStatus = "upcoming" | "live" | "finished";
+
 export interface Match {
   id: string;
   home_team: string;
   away_team: string;
   match_date: string | null;
+  kickoff_time: string | null;
   venue: string | null;
+  status: string;
+  cover_path: string | null;
+  home_logo_path: string | null;
+  away_logo_path: string | null;
   created_at: string;
 }
 
@@ -17,6 +24,14 @@ export interface Photo {
   created_at: string;
 }
 
+export interface FaceMatch {
+  photo_id: string;
+  match_id: string;
+  storage_path: string;
+  file_name: string;
+  similarity: number;
+}
+
 export async function listMatches() {
   const { data, error } = await supabase
     .from("matches")
@@ -25,6 +40,16 @@ export async function listMatches() {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data as Match[];
+}
+
+export async function getMatch(matchId: string) {
+  const { data, error } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("id", matchId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Match | null) ?? null;
 }
 
 export async function listPhotos(matchId: string) {
@@ -47,46 +72,103 @@ export async function countPhotosByMatch() {
   return counts;
 }
 
-export async function getCovers(matchIds: string[]) {
-  if (matchIds.length === 0) return {} as Record<string, string>;
-  const { data, error } = await supabase
-    .from("photos")
-    .select("match_id, storage_path, created_at")
-    .in("match_id", matchIds)
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  const firstPath: Record<string, string> = {};
-  for (const row of data ?? []) {
-    if (!firstPath[row.match_id]) firstPath[row.match_id] = row.storage_path;
-  }
-  const paths = Object.values(firstPath);
-  if (paths.length === 0) return {} as Record<string, string>;
-  const { data: signed, error: signError } = await supabase.storage
-    .from("photos")
-    .createSignedUrls(paths, 3600);
-  if (signError) throw signError;
-  const byPath: Record<string, string> = {};
-  for (const s of signed ?? []) {
-    if (s.path && s.signedUrl) byPath[s.path] = s.signedUrl;
-  }
-  const covers: Record<string, string> = {};
-  for (const [mid, p] of Object.entries(firstPath)) {
-    if (byPath[p]) covers[mid] = byPath[p];
-  }
-  return covers;
-}
-
 export async function signPhotoUrls(paths: string[]) {
-  if (paths.length === 0) return {} as Record<string, string>;
+  const unique = Array.from(new Set(paths.filter(Boolean)));
+  if (unique.length === 0) return {} as Record<string, string>;
   const { data, error } = await supabase.storage
     .from("photos")
-    .createSignedUrls(paths, 3600);
+    .createSignedUrls(unique, 3600);
   if (error) throw error;
   const map: Record<string, string> = {};
   for (const s of data ?? []) {
     if (s.path && s.signedUrl) map[s.path] = s.signedUrl;
   }
   return map;
+}
+
+/** Portada de cada partido: la subida por el fotógrafo o, si no hay, su primera foto. */
+export async function getCovers(matches: Match[]) {
+  if (matches.length === 0) return {} as Record<string, string>;
+  const chosen: Record<string, string> = {};
+  const missing: string[] = [];
+  for (const m of matches) {
+    if (m.cover_path) chosen[m.id] = m.cover_path;
+    else missing.push(m.id);
+  }
+  if (missing.length > 0) {
+    const { data, error } = await supabase
+      .from("photos")
+      .select("match_id, storage_path, created_at")
+      .in("match_id", missing)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    for (const row of data ?? []) {
+      if (!chosen[row.match_id]) chosen[row.match_id] = row.storage_path;
+    }
+  }
+  const byPath = await signPhotoUrls(Object.values(chosen));
+  const covers: Record<string, string> = {};
+  for (const [id, path] of Object.entries(chosen)) {
+    if (byPath[path]) covers[id] = byPath[path];
+  }
+  return covers;
+}
+
+/** URLs firmadas de los escudos de todos los partidos. */
+export async function getLogos(matches: Match[]) {
+  const paths = matches.flatMap((m) =>
+    [m.home_logo_path, m.away_logo_path].filter(Boolean as never as (v: string | null) => v is string),
+  );
+  const byPath = await signPhotoUrls(paths);
+  const logos: Record<string, { home?: string; away?: string }> = {};
+  for (const m of matches) {
+    logos[m.id] = {
+      home: m.home_logo_path ? byPath[m.home_logo_path] : undefined,
+      away: m.away_logo_path ? byPath[m.away_logo_path] : undefined,
+    };
+  }
+  return logos;
+}
+
+export async function uploadMatchAsset(
+  matchId: string,
+  kind: "portada" | "escudo-local" | "escudo-visitante",
+  file: File,
+) {
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${matchId}/_meta/${kind}-${crypto.randomUUID()}-${safe}`;
+  const { error } = await supabase.storage
+    .from("photos")
+    .upload(path, file, { contentType: file.type });
+  if (error) throw error;
+  return path;
+}
+
+/** Guarda un vector de 128 dimensiones por cada rostro encontrado en una foto. */
+export async function saveFaceEmbeddings(
+  photoId: string,
+  matchId: string,
+  descriptors: number[][],
+) {
+  if (descriptors.length === 0) return;
+  const rows = descriptors.map((d) => ({
+    photo_id: photoId,
+    match_id: matchId,
+    embedding: JSON.stringify(d),
+  }));
+  const { error } = await supabase.from("face_embeddings").insert(rows);
+  if (error) throw error;
+}
+
+export async function searchFaces(descriptor: number[], matchId: string) {
+  const { data, error } = await supabase.rpc("match_faces", {
+    query_embedding: JSON.stringify(descriptor),
+    similarity_threshold: 0.55,
+    match_limit: 100,
+    p_match_id: matchId,
+  });
+  if (error) throw error;
+  return (data ?? []) as FaceMatch[];
 }
 
 export function formatDate(iso: string | null) {
@@ -98,4 +180,15 @@ export function formatDate(iso: string | null) {
     month: "short",
     year: "numeric",
   });
+}
+
+export function formatTime(time: string | null) {
+  if (!time) return null;
+  return time.slice(0, 5);
+}
+
+export function statusLabel(status: string) {
+  if (status === "live") return "En vivo";
+  if (status === "finished") return "Finalizado";
+  return "Próximo";
 }
