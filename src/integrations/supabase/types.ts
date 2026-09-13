@@ -14,29 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      face_embeddings: {
+        Row: {
+          created_at: string
+          embedding: string
+          id: string
+          match_id: string
+          photo_id: string
+        }
+        Insert: {
+          created_at?: string
+          embedding: string
+          id?: string
+          match_id: string
+          photo_id: string
+        }
+        Update: {
+          created_at?: string
+          embedding?: string
+          id?: string
+          match_id?: string
+          photo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "face_embeddings_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_embeddings_photo_id_fkey"
+            columns: ["photo_id"]
+            isOneToOne: false
+            referencedRelation: "photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
+          away_logo_path: string | null
           away_team: string
+          cover_path: string | null
           created_at: string
+          home_logo_path: string | null
           home_team: string
           id: string
+          kickoff_time: string | null
           match_date: string | null
+          status: string
           venue: string | null
         }
         Insert: {
+          away_logo_path?: string | null
           away_team: string
+          cover_path?: string | null
           created_at?: string
+          home_logo_path?: string | null
           home_team: string
           id?: string
+          kickoff_time?: string | null
           match_date?: string | null
+          status?: string
           venue?: string | null
         }
         Update: {
+          away_logo_path?: string | null
           away_team?: string
+          cover_path?: string | null
           created_at?: string
+          home_logo_path?: string | null
           home_team?: string
           id?: string
+          kickoff_time?: string | null
           match_date?: string | null
+          status?: string
           venue?: string | null
         }
         Relationships: []
@@ -78,7 +132,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_faces: {
+        Args: {
+          match_limit?: number
+          p_match_id?: string
+          query_embedding: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          file_name: string
+          match_id: string
+          photo_id: string
+          similarity: number
+          storage_path: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

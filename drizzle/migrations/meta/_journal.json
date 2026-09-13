@@ -8,6 +8,13 @@
       "when": 1789191276855,
       "tag": "0000_create_matches_and_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789277728193,
+      "tag": "0001_match_covers_and_face_embeddings",
+      "breakpoints": true
     }
   ]
 }
