@@ -19,6 +19,7 @@ import {
   type Photo,
 } from "@/lib/matches";
 import logoMark from "@/assets/logo-mark.png";
+import { MatchComments } from "@/components/MatchComments";
 
 export const Route = createFileRoute("/partido/$matchId")({
   head: () => ({
