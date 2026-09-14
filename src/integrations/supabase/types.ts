@@ -53,6 +53,67 @@ export type Database = {
           },
         ]
       }
+      match_comments: {
+        Row: {
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          match_id: string
+        }
+        Insert: {
+          author_name: string
+          content: string
+          created_at?: string
+          id?: string
+          match_id: string
+        }
+        Update: {
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          match_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_comments_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_likes: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          match_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          match_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          match_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_likes_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           away_logo_path: string | null

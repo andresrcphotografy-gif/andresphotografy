@@ -15,6 +15,13 @@
       "when": 1789277728193,
       "tag": "0001_match_covers_and_face_embeddings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789364631358,
+      "tag": "0002_create_likes_comments",
+      "breakpoints": true
     }
   ]
 }
