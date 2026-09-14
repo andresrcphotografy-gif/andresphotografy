@@ -1,9 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Camera,
+  ChevronLeft,
+  ChevronRight,
   ImagePlus,
   MapPin,
   Trash2,
@@ -59,7 +61,8 @@ function MatchPage() {
     done: 0,
     running: false,
   });
-  const [lightbox, setLightbox] = useState<Photo | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data: match, isLoading: loadingMatch } = useQuery({
