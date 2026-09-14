@@ -258,20 +258,19 @@ function NewMatchSheet({ onClose }: { onClose: () => void }) {
       if (err) throw err;
       const id = data.id as string;
 
-      const patch: Record<string, string> = {};
-      if (cover) patch['cover_path'] = await uploadMatchAsset(id, "portada", cover);
-      if (homeLogo)
-        patch['home_logo_path'] = await uploadMatchAsset(id, "escudo-local", homeLogo);
-      if (awayLogo)
-        patch['away_logo_path'] = await uploadMatchAsset(
-          id,
-          "escudo-visitante",
-          awayLogo,
-        );
-      if (Object.keys(patch).length > 0) {
+      const cover_path = cover
+        ? await uploadMatchAsset(id, "portada", cover)
+        : null;
+      const home_logo_path = homeLogo
+        ? await uploadMatchAsset(id, "escudo-local", homeLogo)
+        : null;
+      const away_logo_path = awayLogo
+        ? await uploadMatchAsset(id, "escudo-visitante", awayLogo)
+        : null;
+      if (cover_path || home_logo_path || away_logo_path) {
         const { error: upErr } = await supabase
           .from("matches")
-          .update(patch)
+          .update({ cover_path, home_logo_path, away_logo_path })
           .eq("id", id);
         if (upErr) throw upErr;
       }
