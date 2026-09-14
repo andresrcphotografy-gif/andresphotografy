@@ -329,6 +329,9 @@ function MatchPage() {
         )}
       </section>
 
+      {/* Comentarios */}
+      <MatchComments matchId={matchId} />
+
       {/* Lightbox */}
       {lightbox && urls[lightbox.storage_path] && (
         <div
