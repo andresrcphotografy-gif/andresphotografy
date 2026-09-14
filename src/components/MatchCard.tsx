@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { Camera, Clock, ImageIcon, MapPin, Shield, Trash2 } from "lucide-react";
+import {
+  Camera,
+  Clock,
+  Heart,
+  ImageIcon,
+  MapPin,
+  MessageCircle,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import {
   formatDate,
   formatTime,
@@ -13,6 +22,10 @@ interface MatchCardProps {
   coverUrl?: string | undefined;
   homeLogoUrl?: string | undefined;
   awayLogoUrl?: string | undefined;
+  likeCount?: number | undefined;
+  liked?: boolean | undefined;
+  commentCount?: number | undefined;
+  onToggleLike?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
@@ -51,6 +64,10 @@ export function MatchCard({
   coverUrl,
   homeLogoUrl,
   awayLogoUrl,
+  likeCount = 0,
+  liked = false,
+  commentCount = 0,
+  onToggleLike,
   onDelete,
 }: MatchCardProps) {
   const time = formatTime(match.kickoff_time);
@@ -83,10 +100,45 @@ export function MatchCard({
           {statusLabel(match.status)}
         </span>
 
-        <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1 text-[11px] font-medium text-turf backdrop-blur">
-          <ImageIcon className="size-3" />
-          {photoCount} {photoCount === 1 ? "foto" : "fotos"}
-        </span>
+        <div className="absolute right-3 top-3 flex items-center gap-1.5">
+          <span className="flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1 text-[11px] font-medium text-turf backdrop-blur">
+            <ImageIcon className="size-3" />
+            {photoCount} {photoCount === 1 ? "foto" : "fotos"}
+          </span>
+          {commentCount > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1 text-[11px] font-medium text-booking backdrop-blur">
+              <MessageCircle className="size-3" />
+              {commentCount}
+            </span>
+          )}
+        </div>
+
+        {onToggleLike && (
+          <button
+            type="button"
+            aria-label={
+              liked
+                ? `Quitar me gusta de ${match.home_team} contra ${match.away_team}`
+                : `Me gusta ${match.home_team} contra ${match.away_team}`
+            }
+            aria-pressed={liked}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleLike();
+            }}
+            className={`absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold backdrop-blur transition-all active:scale-90 ${
+              liked
+                ? "bg-destructive/80 text-destructive-foreground"
+                : "bg-background/60 text-muted-foreground hover:text-destructive"
+            }`}
+          >
+            <Heart
+              className={`size-4 transition-transform ${liked ? "fill-current scale-110" : ""}`}
+            />
+            {likeCount > 0 && likeCount}
+          </button>
+        )}
 
         {onDelete && (
           <button

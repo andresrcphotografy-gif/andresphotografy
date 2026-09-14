@@ -171,6 +171,111 @@ export async function searchFaces(descriptor: number[], matchId: string) {
   return (data ?? []) as FaceMatch[];
 }
 
+// ---------- Me gusta ----------
+
+export interface MatchComment {
+  id: string;
+  match_id: string;
+  author_name: string;
+  content: string;
+  created_at: string;
+}
+
+/** Identificador anónimo y persistente de este navegador para los "me gusta". */
+export function getClientId() {
+  const KEY = "ap-client-id";
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
+
+export async function getLikesByMatch() {
+  const { data, error } = await supabase
+    .from("match_likes")
+    .select("match_id, client_id");
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  const mine: Record<string, boolean> = {};
+  const clientId = getClientId();
+  for (const row of data ?? []) {
+    counts[row.match_id] = (counts[row.match_id] ?? 0) + 1;
+    if (row.client_id === clientId) mine[row.match_id] = true;
+  }
+  return { counts, mine };
+}
+
+export async function toggleLike(matchId: string, liked: boolean) {
+  const clientId = getClientId();
+  if (liked) {
+    const { error } = await supabase
+      .from("match_likes")
+      .delete()
+      .eq("match_id", matchId)
+      .eq("client_id", clientId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("match_likes")
+      .insert({ match_id: matchId, client_id: clientId });
+    if (error) throw error;
+  }
+}
+
+// ---------- Comentarios ----------
+
+export async function listComments(matchId: string) {
+  const { data, error } = await supabase
+    .from("match_comments")
+    .select("*")
+    .eq("match_id", matchId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as MatchComment[];
+}
+
+export async function countCommentsByMatch() {
+  const { data, error } = await supabase
+    .from("match_comments")
+    .select("match_id");
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    counts[row.match_id] = (counts[row.match_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+export async function addComment(
+  matchId: string,
+  authorName: string,
+  content: string,
+) {
+  const { error } = await supabase.from("match_comments").insert({
+    match_id: matchId,
+    author_name: authorName.trim(),
+    content: content.trim(),
+  });
+  if (error) throw error;
+}
+
+export async function deleteComment(id: string) {
+  const { error } = await supabase.from("match_comments").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function formatDate(iso: string | null) {
   if (!iso) return "Sin fecha";
   const d = new Date(`${iso}T12:00:00`);

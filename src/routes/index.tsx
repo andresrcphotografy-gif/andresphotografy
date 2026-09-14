@@ -5,10 +5,13 @@ import { Camera, ImagePlus, Plus, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchCard } from "@/components/MatchCard";
 import {
+  countCommentsByMatch,
   countPhotosByMatch,
   getCovers,
+  getLikesByMatch,
   getLogos,
   listMatches,
+  toggleLike,
   uploadMatchAsset,
 } from "@/lib/matches";
 import logoMark from "@/assets/logo-mark.png";
@@ -47,6 +50,22 @@ function Index() {
   const { data: counts = {} } = useQuery({
     queryKey: ["photo-counts"],
     queryFn: countPhotosByMatch,
+  });
+
+  const { data: commentCounts = {} } = useQuery({
+    queryKey: ["comment-counts"],
+    queryFn: countCommentsByMatch,
+  });
+
+  const { data: likes = { counts: {}, mine: {} } } = useQuery({
+    queryKey: ["likes"],
+    queryFn: getLikesByMatch,
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
+      toggleLike(id, liked),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["likes"] }),
   });
 
   const matchKey = matches.map((m) => m.id).join(",");
@@ -145,6 +164,15 @@ function Index() {
                   coverUrl={covers[m.id]}
                   homeLogoUrl={logos[m.id]?.home}
                   awayLogoUrl={logos[m.id]?.away}
+                  likeCount={likes.counts[m.id] ?? 0}
+                  liked={likes.mine[m.id] ?? false}
+                  commentCount={commentCounts[m.id] ?? 0}
+                  onToggleLike={() =>
+                    likeMutation.mutate({
+                      id: m.id,
+                      liked: likes.mine[m.id] ?? false,
+                    })
+                  }
                   onDelete={() => {
                     if (
                       window.confirm(
@@ -258,20 +286,19 @@ function NewMatchSheet({ onClose }: { onClose: () => void }) {
       if (err) throw err;
       const id = data.id as string;
 
-      const patch: Record<string, string> = {};
-      if (cover) patch['cover_path'] = await uploadMatchAsset(id, "portada", cover);
-      if (homeLogo)
-        patch['home_logo_path'] = await uploadMatchAsset(id, "escudo-local", homeLogo);
-      if (awayLogo)
-        patch['away_logo_path'] = await uploadMatchAsset(
-          id,
-          "escudo-visitante",
-          awayLogo,
-        );
-      if (Object.keys(patch).length > 0) {
+      const cover_path = cover
+        ? await uploadMatchAsset(id, "portada", cover)
+        : null;
+      const home_logo_path = homeLogo
+        ? await uploadMatchAsset(id, "escudo-local", homeLogo)
+        : null;
+      const away_logo_path = awayLogo
+        ? await uploadMatchAsset(id, "escudo-visitante", awayLogo)
+        : null;
+      if (cover_path || home_logo_path || away_logo_path) {
         const { error: upErr } = await supabase
           .from("matches")
-          .update(patch)
+          .update({ cover_path, home_logo_path, away_logo_path })
           .eq("id", id);
         if (upErr) throw upErr;
       }

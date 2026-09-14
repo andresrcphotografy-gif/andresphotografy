@@ -7,3 +7,5 @@
 - [x] UI: lista de partidos, crear partido, subida masiva, galería, lightbox, borrado
 - [x] SEO/head metadata
 - [x] Verificado: crear partido y subir paquete de 3 fotos funcionan sin errores
+- [x] Portadas, escudos, hora y estado en tarjetas de partido
+- [x] Me gusta (corazón) por carpeta + comentarios por partido — verificado en navegador
