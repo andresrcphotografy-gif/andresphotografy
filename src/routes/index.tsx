@@ -5,10 +5,13 @@ import { Camera, ImagePlus, Plus, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchCard } from "@/components/MatchCard";
 import {
+  countCommentsByMatch,
   countPhotosByMatch,
   getCovers,
+  getLikesByMatch,
   getLogos,
   listMatches,
+  toggleLike,
   uploadMatchAsset,
 } from "@/lib/matches";
 import logoMark from "@/assets/logo-mark.png";
@@ -47,6 +50,22 @@ function Index() {
   const { data: counts = {} } = useQuery({
     queryKey: ["photo-counts"],
     queryFn: countPhotosByMatch,
+  });
+
+  const { data: commentCounts = {} } = useQuery({
+    queryKey: ["comment-counts"],
+    queryFn: countCommentsByMatch,
+  });
+
+  const { data: likes = { counts: {}, mine: {} } } = useQuery({
+    queryKey: ["likes"],
+    queryFn: getLikesByMatch,
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
+      toggleLike(id, liked),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["likes"] }),
   });
 
   const matchKey = matches.map((m) => m.id).join(",");
@@ -145,6 +164,15 @@ function Index() {
                   coverUrl={covers[m.id]}
                   homeLogoUrl={logos[m.id]?.home}
                   awayLogoUrl={logos[m.id]?.away}
+                  likeCount={likes.counts[m.id] ?? 0}
+                  liked={likes.mine[m.id] ?? false}
+                  commentCount={commentCounts[m.id] ?? 0}
+                  onToggleLike={() =>
+                    likeMutation.mutate({
+                      id: m.id,
+                      liked: likes.mine[m.id] ?? false,
+                    })
+                  }
                   onDelete={() => {
                     if (
                       window.confirm(
