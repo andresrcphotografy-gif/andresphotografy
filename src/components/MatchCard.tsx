@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { Camera, Clock, ImageIcon, MapPin, Shield, Trash2 } from "lucide-react";
+import {
+  Camera,
+  Clock,
+  Heart,
+  ImageIcon,
+  MapPin,
+  MessageCircle,
+  Shield,
+  Trash2,
+} from "lucide-react";
 import {
   formatDate,
   formatTime,
@@ -13,6 +22,10 @@ interface MatchCardProps {
   coverUrl?: string | undefined;
   homeLogoUrl?: string | undefined;
   awayLogoUrl?: string | undefined;
+  likeCount?: number | undefined;
+  liked?: boolean | undefined;
+  commentCount?: number | undefined;
+  onToggleLike?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
 }
 
