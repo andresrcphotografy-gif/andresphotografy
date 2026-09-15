@@ -118,8 +118,12 @@ function MatchPage() {
     enabled: photos.length > 0,
   });
 
-  const total = photos.length;
-  const current = index !== null ? photos[index] : undefined;
+  const visible =
+    filterIds === null
+      ? photos
+      : photos.filter((p) => new Set(filterIds).has(p.id));
+  const total = visible.length;
+  const current = index !== null ? visible[index] : undefined;
 
   const step = useCallback(
     (dir: 1 | -1) => {
