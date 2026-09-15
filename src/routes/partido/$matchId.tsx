@@ -79,11 +79,20 @@ function MatchPage() {
   const [index, setIndex] = useState<number | null>(null);
   const touchStartX = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSelfie, setShowSelfie] = useState(false);
+  const [filterIds, setFilterIds] = useState<string[] | null>(null);
+  const [indexing, setIndexing] = useState<{
+    total: number;
+    done: number;
+    running: boolean;
+  }>({ total: 0, done: 0, running: false });
 
   const { unlocked } = usePhotographer();
   const getUploadUrl = useServerFn(createPhotoUploadUrl);
   const savePhoto = useServerFn(registerPhoto);
   const removePhoto = useServerFn(deletePhotoFn);
+  const storeFaces = useServerFn(saveFaces);
+  const listPending = useServerFn(pendingFacePhotos);
 
   const { data: match, isLoading: loadingMatch } = useQuery({
     queryKey: ["match", matchId],
