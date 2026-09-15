@@ -9,3 +9,6 @@
 - [x] Verificado: crear partido y subir paquete de 3 fotos funcionan sin errores
 - [x] Portadas, escudos, hora y estado en tarjetas de partido
 - [x] Me gusta (corazón) por carpeta + comentarios por partido — verificado en navegador
+- [x] Visor de fotos con paso (flechas, teclado, deslizar) — verificado en navegador
+- [x] Subida y borrado protegidos con la clave de Andrés (avisos de seguridad resueltos)
+- [ ] Conectar búsqueda por selfie en la página del partido + indexar rostros al subir
