@@ -90,8 +90,7 @@ function Index() {
 
   const deleteMatch = useMutation({
     mutationFn: async (id: string) => {
-      const { error: err } = await supabase.from("matches").delete().eq("id", id);
-      if (err) throw err;
+      await deleteMatchFn({ data: { matchId: id } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
@@ -121,12 +120,15 @@ function Index() {
             </p>
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card/60 px-3 py-1.5 text-right">
-          <div className="font-display text-lg font-semibold leading-none text-booking">
-            {totalPhotos.toLocaleString("es-ES")}
-          </div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Fotos
+        <div className="flex items-center gap-2">
+          <PhotographerButton />
+          <div className="rounded-xl border border-border bg-card/60 px-3 py-1.5 text-right">
+            <div className="font-display text-lg font-semibold leading-none text-booking">
+              {totalPhotos.toLocaleString("es-ES")}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Fotos
+            </div>
           </div>
         </div>
       </header>
