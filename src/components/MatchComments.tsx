@@ -7,9 +7,11 @@ import {
   formatDateTime,
   listComments,
 } from "@/lib/matches";
+import { usePhotographer } from "@/components/PhotographerGate";
 
 export function MatchComments({ matchId }: { matchId: string }) {
   const queryClient = useQueryClient();
+  const { unlocked } = usePhotographer();
   const [name, setName] = useState(
     () => localStorage.getItem("ap-author-name") ?? "",
   );
@@ -113,18 +115,20 @@ export function MatchComments({ matchId }: { matchId: string }) {
                   <time className="text-[11px] text-muted-foreground">
                     {formatDateTime(c.created_at)}
                   </time>
-                  <button
-                    type="button"
-                    aria-label={`Eliminar comentario de ${c.author_name}`}
-                    onClick={() => {
-                      if (window.confirm("¿Eliminar este comentario?")) {
-                        deleteMutation.mutate(c.id);
-                      }
-                    }}
-                    className="rounded-lg p-1.5 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {unlocked && (
+                    <button
+                      type="button"
+                      aria-label={`Eliminar comentario de ${c.author_name}`}
+                      onClick={() => {
+                        if (window.confirm("¿Eliminar este comentario?")) {
+                          deleteMutation.mutate(c.id);
+                        }
+                      }}
+                      className="rounded-lg p-1.5 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
               <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">

@@ -1,4 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  createPhotoUploadUrl,
+  deleteCommentFn,
+  removeLike,
+} from "@/lib/photographer.functions";
 
 export type MatchStatus = "upcoming" | "live" | "finished";
 
@@ -135,11 +140,12 @@ export async function uploadMatchAsset(
   kind: "portada" | "escudo-local" | "escudo-visitante",
   file: File,
 ) {
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `${matchId}/_meta/${kind}-${crypto.randomUUID()}-${safe}`;
+  const { path, token } = await createPhotoUploadUrl({
+    data: { matchId, fileName: file.name, kind },
+  });
   const { error } = await supabase.storage
     .from("photos")
-    .upload(path, file, { contentType: file.type });
+    .uploadToSignedUrl(path, token, file, { contentType: file.type });
   if (error) throw error;
   return path;
 }
@@ -210,12 +216,7 @@ export async function getLikesByMatch() {
 export async function toggleLike(matchId: string, liked: boolean) {
   const clientId = getClientId();
   if (liked) {
-    const { error } = await supabase
-      .from("match_likes")
-      .delete()
-      .eq("match_id", matchId)
-      .eq("client_id", clientId);
-    if (error) throw error;
+    await removeLike({ data: { matchId, clientId } });
   } else {
     const { error } = await supabase
       .from("match_likes")
@@ -261,9 +262,9 @@ export async function addComment(
   if (error) throw error;
 }
 
+/** Solo el fotógrafo (con su clave) puede borrar comentarios. */
 export async function deleteComment(id: string) {
-  const { error } = await supabase.from("match_comments").delete().eq("id", id);
-  if (error) throw error;
+  await deleteCommentFn({ data: { id } });
 }
 
 export function formatDateTime(iso: string) {

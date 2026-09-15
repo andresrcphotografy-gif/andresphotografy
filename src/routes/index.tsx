@@ -14,6 +14,11 @@ import {
   toggleLike,
   uploadMatchAsset,
 } from "@/lib/matches";
+import {
+  PhotographerButton,
+  usePhotographer,
+} from "@/components/PhotographerGate";
+import { deleteMatchFn, setMatchAssets } from "@/lib/photographer.functions";
 import logoMark from "@/assets/logo-mark.png";
 
 export const Route = createFileRoute("/")({
@@ -41,6 +46,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const { unlocked } = usePhotographer();
 
   const { data: matches = [], isLoading, error } = useQuery({
     queryKey: ["matches"],
@@ -84,8 +90,7 @@ function Index() {
 
   const deleteMatch = useMutation({
     mutationFn: async (id: string) => {
-      const { error: err } = await supabase.from("matches").delete().eq("id", id);
-      if (err) throw err;
+      await deleteMatchFn({ data: { matchId: id } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches"] });
@@ -115,12 +120,15 @@ function Index() {
             </p>
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card/60 px-3 py-1.5 text-right">
-          <div className="font-display text-lg font-semibold leading-none text-booking">
-            {totalPhotos.toLocaleString("es-ES")}
-          </div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Fotos
+        <div className="flex items-center gap-2">
+          <PhotographerButton />
+          <div className="rounded-xl border border-border bg-card/60 px-3 py-1.5 text-right">
+            <div className="font-display text-lg font-semibold leading-none text-booking">
+              {totalPhotos.toLocaleString("es-ES")}
+            </div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Fotos
+            </div>
           </div>
         </div>
       </header>
@@ -173,15 +181,19 @@ function Index() {
                       liked: likes.mine[m.id] ?? false,
                     })
                   }
-                  onDelete={() => {
-                    if (
-                      window.confirm(
-                        `¿Eliminar el partido ${m.home_team} vs ${m.away_team} y todas sus fotos?`,
-                      )
-                    ) {
-                      deleteMatch.mutate(m.id);
-                    }
-                  }}
+                  onDelete={
+                    unlocked
+                      ? () => {
+                          if (
+                            window.confirm(
+                              `¿Eliminar el partido ${m.home_team} vs ${m.away_team} y todas sus fotos?`,
+                            )
+                          ) {
+                            deleteMatch.mutate(m.id);
+                          }
+                        }
+                      : undefined
+                  }
                 />
               </li>
             ))}
@@ -189,7 +201,9 @@ function Index() {
         )}
       </section>
 
-      <div className="fixed inset-x-4 bottom-4 z-20 mx-auto max-w-3xl">
+      <div
+        className={`fixed inset-x-4 bottom-4 z-20 mx-auto max-w-3xl ${unlocked ? "" : "hidden"}`}
+      >
         <button
           type="button"
           onClick={() => setShowForm(true)}
@@ -296,11 +310,14 @@ function NewMatchSheet({ onClose }: { onClose: () => void }) {
         ? await uploadMatchAsset(id, "escudo-visitante", awayLogo)
         : null;
       if (cover_path || home_logo_path || away_logo_path) {
-        const { error: upErr } = await supabase
-          .from("matches")
-          .update({ cover_path, home_logo_path, away_logo_path })
-          .eq("id", id);
-        if (upErr) throw upErr;
+        await setMatchAssets({
+          data: {
+            matchId: id,
+            coverPath: cover_path,
+            homeLogoPath: home_logo_path,
+            awayLogoPath: away_logo_path,
+          },
+        });
       }
       return id;
     },
