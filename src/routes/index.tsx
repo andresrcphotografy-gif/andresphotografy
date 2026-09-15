@@ -310,11 +310,14 @@ function NewMatchSheet({ onClose }: { onClose: () => void }) {
         ? await uploadMatchAsset(id, "escudo-visitante", awayLogo)
         : null;
       if (cover_path || home_logo_path || away_logo_path) {
-        const { error: upErr } = await supabase
-          .from("matches")
-          .update({ cover_path, home_logo_path, away_logo_path })
-          .eq("id", id);
-        if (upErr) throw upErr;
+        await setMatchAssets({
+          data: {
+            matchId: id,
+            coverPath: cover_path,
+            homeLogoPath: home_logo_path,
+            awayLogoPath: away_logo_path,
+          },
+        });
       }
       return id;
     },
