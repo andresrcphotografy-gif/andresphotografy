@@ -596,6 +596,17 @@ function MatchPage() {
           </div>
         </div>
       )}
+
+      {showSelfie && (
+        <SelfieSearchModal
+          matchId={matchId}
+          onClose={() => setShowSelfie(false)}
+          onResults={(ids) => {
+            setFilterIds(ids);
+            setIndex(null);
+          }}
+        />
+      )}
     </div>
   );
 }
