@@ -399,6 +399,61 @@ function MatchPage() {
 
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
 
+      {/* Búsqueda con selfie */}
+      {photos.length > 0 && (
+        <section className="animate-rise-1 mt-5">
+          <button
+            type="button"
+            onClick={() => setShowSelfie(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-turf py-3.5 font-display text-sm font-semibold uppercase tracking-wide text-background shadow-[0_8px_24px_oklch(0.72_0.16_155/0.25)] transition-transform active:scale-95"
+          >
+            <ScanFace className="size-5" /> Buscar mis fotos con selfie
+          </button>
+          {filterIds !== null && (
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-turf/30 bg-turf/10 px-3 py-2">
+              <p className="text-xs text-turf">
+                {filterIds.length === 0
+                  ? "No encontramos fotos con esa cara."
+                  : `Mostrando ${filterIds.length} ${filterIds.length === 1 ? "foto" : "fotos"} donde apareces.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterIds(null);
+                  setIndex(null);
+                }}
+                className="shrink-0 rounded-lg border border-turf/40 px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-wide text-turf"
+              >
+                Ver todas
+              </button>
+            </div>
+          )}
+
+          {unlocked && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={indexExisting}
+                disabled={indexing.running}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card/60 py-2.5 font-display text-xs font-semibold uppercase tracking-wide text-muted-foreground disabled:opacity-60"
+              >
+                {indexing.running ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Analizando
+                    rostros · {indexing.done} de {indexing.total}
+                  </>
+                ) : (
+                  <>
+                    <ScanFace className="size-4" /> Analizar rostros de las
+                    fotos ya subidas
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Gallery */}
       <section className="animate-rise-2 mt-6">
         <div className="mb-2 flex items-center justify-between">
@@ -418,12 +473,14 @@ function MatchPage() {
           <div className="frost rounded-2xl border border-dashed border-border p-10 text-center">
             <Camera className="mx-auto size-8 text-muted-foreground/50" />
             <p className="mt-2 text-sm text-muted-foreground">
-              Este partido aún no tiene fotos.
+              {filterIds !== null
+                ? "No encontramos fotos con esa cara. Prueba con otro selfie."
+                : "Este partido aún no tiene fotos."}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {photos.map((p, i) =>
+            {visible.map((p, i) =>
               urls[p.storage_path] ? (
                 <button
                   key={p.id}
