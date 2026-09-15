@@ -181,15 +181,19 @@ function Index() {
                       liked: likes.mine[m.id] ?? false,
                     })
                   }
-                  onDelete={() => {
-                    if (
-                      window.confirm(
-                        `¿Eliminar el partido ${m.home_team} vs ${m.away_team} y todas sus fotos?`,
-                      )
-                    ) {
-                      deleteMatch.mutate(m.id);
-                    }
-                  }}
+                  onDelete={
+                    unlocked
+                      ? () => {
+                          if (
+                            window.confirm(
+                              `¿Eliminar el partido ${m.home_team} vs ${m.away_team} y todas sus fotos?`,
+                            )
+                          ) {
+                            deleteMatch.mutate(m.id);
+                          }
+                        }
+                      : undefined
+                  }
                 />
               </li>
             ))}
@@ -197,7 +201,9 @@ function Index() {
         )}
       </section>
 
-      <div className="fixed inset-x-4 bottom-4 z-20 mx-auto max-w-3xl">
+      <div
+        className={`fixed inset-x-4 bottom-4 z-20 mx-auto max-w-3xl ${unlocked ? "" : "hidden"}`}
+      >
         <button
           type="button"
           onClick={() => setShowForm(true)}
