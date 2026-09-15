@@ -166,7 +166,18 @@ function MatchPage() {
             .from("photos")
             .uploadToSignedUrl(path, token, file, { contentType: file.type });
           if (upErr) throw upErr;
-          await savePhoto({ data: { matchId, path, fileName: file.name } });
+          const { id } = await savePhoto({
+            data: { matchId, path, fileName: file.name },
+          });
+          // Analiza los rostros de la foto para la búsqueda con selfie.
+          try {
+            const descriptors = await descriptorsFromBlob(file);
+            if (descriptors.length > 0) {
+              await storeFaces({ data: { photoId: id, matchId, descriptors } });
+            }
+          } catch {
+            // Si el análisis falla, la foto ya está subida.
+          }
         } catch {
           failed.push(file.name);
         }
