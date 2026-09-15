@@ -7,9 +7,11 @@ import {
   formatDateTime,
   listComments,
 } from "@/lib/matches";
+import { usePhotographer } from "@/components/PhotographerGate";
 
 export function MatchComments({ matchId }: { matchId: string }) {
   const queryClient = useQueryClient();
+  const { unlocked } = usePhotographer();
   const [name, setName] = useState(
     () => localStorage.getItem("ap-author-name") ?? "",
   );
