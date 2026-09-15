@@ -8,7 +8,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ImagePlus,
+  Loader2,
   MapPin,
+  ScanFace,
   Trash2,
   Upload,
   X,
@@ -23,12 +25,16 @@ import {
 import {
   createPhotoUploadUrl,
   deletePhotoFn,
+  pendingFacePhotos,
   registerPhoto,
+  saveFaces,
 } from "@/lib/photographer.functions";
 import {
   PhotographerButton,
   usePhotographer,
 } from "@/components/PhotographerGate";
+import { SelfieSearchModal } from "@/components/SelfieSearchModal";
+import { descriptorsFromBlob } from "@/lib/face";
 import logoMark from "@/assets/logo-mark.png";
 import { MatchComments } from "@/components/MatchComments";
 
