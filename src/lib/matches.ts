@@ -216,12 +216,7 @@ export async function getLikesByMatch() {
 export async function toggleLike(matchId: string, liked: boolean) {
   const clientId = getClientId();
   if (liked) {
-    const { error } = await supabase
-      .from("match_likes")
-      .delete()
-      .eq("match_id", matchId)
-      .eq("client_id", clientId);
-    if (error) throw error;
+    await removeLike({ data: { matchId, clientId } });
   } else {
     const { error } = await supabase
       .from("match_likes")
@@ -267,9 +262,9 @@ export async function addComment(
   if (error) throw error;
 }
 
+/** Solo el fotógrafo (con su clave) puede borrar comentarios. */
 export async function deleteComment(id: string) {
-  const { error } = await supabase.from("match_comments").delete().eq("id", id);
-  if (error) throw error;
+  await deleteCommentFn({ data: { id } });
 }
 
 export function formatDateTime(iso: string) {
