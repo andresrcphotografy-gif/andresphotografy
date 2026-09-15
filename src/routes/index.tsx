@@ -14,6 +14,11 @@ import {
   toggleLike,
   uploadMatchAsset,
 } from "@/lib/matches";
+import {
+  PhotographerButton,
+  usePhotographer,
+} from "@/components/PhotographerGate";
+import { deleteMatchFn, setMatchAssets } from "@/lib/photographer.functions";
 import logoMark from "@/assets/logo-mark.png";
 
 export const Route = createFileRoute("/")({
@@ -41,6 +46,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const { unlocked } = usePhotographer();
 
   const { data: matches = [], isLoading, error } = useQuery({
     queryKey: ["matches"],
