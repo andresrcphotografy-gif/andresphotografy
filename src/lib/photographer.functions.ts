@@ -104,13 +104,66 @@ export const registerPhoto = createServerFn({ method: "POST" })
       throw new Error("Ruta no válida");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("photos").insert({
-      match_id: data.matchId,
-      storage_path: data.path,
-      file_name: data.fileName,
-    });
+    const { data: row, error } = await supabaseAdmin
+      .from("photos")
+      .insert({
+        match_id: data.matchId,
+        storage_path: data.path,
+        file_name: data.fileName,
+      })
+      .select("id")
+      .single();
     if (error) throw error;
-    return { ok: true as const };
+    return { ok: true as const, id: row.id as string };
+  });
+
+/** Guarda los vectores de rostro (128 dimensiones) de una foto. */
+export const saveFaces = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { photoId: string; matchId: string; descriptors: number[][] }) => ({
+      photoId: String(data.photoId),
+      matchId: String(data.matchId),
+      descriptors: Array.isArray(data.descriptors) ? data.descriptors : [],
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requirePhotographer();
+    const rows = data.descriptors
+      .filter((d) => Array.isArray(d) && d.length === 128)
+      .map((d) => ({
+        photo_id: data.photoId,
+        match_id: data.matchId,
+        embedding: JSON.stringify(d),
+      }));
+    if (rows.length === 0) return { ok: true as const, saved: 0 };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("face_embeddings").insert(rows);
+    if (error) throw error;
+    return { ok: true as const, saved: rows.length };
+  });
+
+/** Fotos del partido que aún no tienen rostros analizados. */
+export const pendingFacePhotos = createServerFn({ method: "POST" })
+  .inputValidator((data: { matchId: string }) => ({ matchId: String(data.matchId) }))
+  .handler(async ({ data }) => {
+    await requirePhotographer();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: photos, error }, { data: indexed }] = await Promise.all([
+      supabaseAdmin
+        .from("photos")
+        .select("id, storage_path")
+        .eq("match_id", data.matchId)
+        .order("created_at", { ascending: true }),
+      supabaseAdmin
+        .from("face_embeddings")
+        .select("photo_id")
+        .eq("match_id", data.matchId),
+    ]);
+    if (error) throw error;
+    const done = new Set((indexed ?? []).map((r) => r.photo_id));
+    return (photos ?? [])
+      .filter((p) => !done.has(p.id))
+      .map((p) => ({ id: p.id as string, storage_path: p.storage_path as string }));
   });
 
 export const setMatchAssets = createServerFn({ method: "POST" })

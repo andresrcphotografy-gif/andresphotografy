@@ -71,7 +71,8 @@ export function SelfieSearchModal({
       onResults(matches.map((m) => m.photo_id));
       stopCamera();
       onClose();
-    } catch {
+    } catch (err) {
+      console.error("selfie search failed", err);
       setError("Algo salió mal durante la búsqueda. Inténtalo de nuevo.");
       setStage("idle");
     }

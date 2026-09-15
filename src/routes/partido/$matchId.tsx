@@ -8,7 +8,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ImagePlus,
+  Loader2,
   MapPin,
+  ScanFace,
   Trash2,
   Upload,
   X,
@@ -23,12 +25,16 @@ import {
 import {
   createPhotoUploadUrl,
   deletePhotoFn,
+  pendingFacePhotos,
   registerPhoto,
+  saveFaces,
 } from "@/lib/photographer.functions";
 import {
   PhotographerButton,
   usePhotographer,
 } from "@/components/PhotographerGate";
+import { SelfieSearchModal } from "@/components/SelfieSearchModal";
+import { descriptorsFromBlob } from "@/lib/face";
 import logoMark from "@/assets/logo-mark.png";
 import { MatchComments } from "@/components/MatchComments";
 
@@ -73,11 +79,20 @@ function MatchPage() {
   const [index, setIndex] = useState<number | null>(null);
   const touchStartX = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSelfie, setShowSelfie] = useState(false);
+  const [filterIds, setFilterIds] = useState<string[] | null>(null);
+  const [indexing, setIndexing] = useState<{
+    total: number;
+    done: number;
+    running: boolean;
+  }>({ total: 0, done: 0, running: false });
 
   const { unlocked } = usePhotographer();
   const getUploadUrl = useServerFn(createPhotoUploadUrl);
   const savePhoto = useServerFn(registerPhoto);
   const removePhoto = useServerFn(deletePhotoFn);
+  const storeFaces = useServerFn(saveFaces);
+  const listPending = useServerFn(pendingFacePhotos);
 
   const { data: match, isLoading: loadingMatch } = useQuery({
     queryKey: ["match", matchId],
@@ -103,8 +118,12 @@ function MatchPage() {
     enabled: photos.length > 0,
   });
 
-  const total = photos.length;
-  const current = index !== null ? photos[index] : undefined;
+  const visible =
+    filterIds === null
+      ? photos
+      : photos.filter((p) => new Set(filterIds).has(p.id));
+  const total = visible.length;
+  const current = index !== null ? visible[index] : undefined;
 
   const step = useCallback(
     (dir: 1 | -1) => {
@@ -147,7 +166,18 @@ function MatchPage() {
             .from("photos")
             .uploadToSignedUrl(path, token, file, { contentType: file.type });
           if (upErr) throw upErr;
-          await savePhoto({ data: { matchId, path, fileName: file.name } });
+          const { id } = await savePhoto({
+            data: { matchId, path, fileName: file.name },
+          });
+          // Analiza los rostros de la foto para la búsqueda con selfie.
+          try {
+            const descriptors = await descriptorsFromBlob(file);
+            if (descriptors.length > 0) {
+              await storeFaces({ data: { photoId: id, matchId, descriptors } });
+            }
+          } catch {
+            // Si el análisis falla, la foto ya está subida.
+          }
         } catch {
           failed.push(file.name);
         }
@@ -165,8 +195,48 @@ function MatchPage() {
       queryClient.invalidateQueries({ queryKey: ["photo-counts"] });
       queryClient.invalidateQueries({ queryKey: ["covers"] });
     },
-    [matchId, queryClient, upload.running, getUploadUrl, savePhoto],
+    [matchId, queryClient, upload.running, getUploadUrl, savePhoto, storeFaces],
   );
+
+  /** Analiza los rostros de las fotos que ya estaban subidas. */
+  const indexExisting = useCallback(async () => {
+    if (indexing.running) return;
+    setError(null);
+    setIndexing({ total: 0, done: 0, running: true });
+    try {
+      const pending = await listPending({ data: { matchId } });
+      if (pending.length === 0) {
+        setIndexing({ total: 0, done: 0, running: false });
+        setError("Todas las fotos ya están analizadas.");
+        return;
+      }
+      const signed = await signPhotoUrls(pending.map((p) => p.storage_path));
+      let done = 0;
+      setIndexing({ total: pending.length, done: 0, running: true });
+      for (const p of pending) {
+        const url = signed[p.storage_path];
+        if (url) {
+          try {
+            const blob = await (await fetch(url)).blob();
+            const descriptors = await descriptorsFromBlob(blob);
+            if (descriptors.length > 0) {
+              await storeFaces({
+                data: { photoId: p.id, matchId, descriptors },
+              });
+            }
+          } catch {
+            // Sigue con la siguiente foto.
+          }
+        }
+        done += 1;
+        setIndexing({ total: pending.length, done, running: true });
+      }
+      setIndexing({ total: pending.length, done, running: false });
+    } catch {
+      setIndexing({ total: 0, done: 0, running: false });
+      setError("No se pudo analizar los rostros. Inténtalo otra vez.");
+    }
+  }, [indexing.running, listPending, matchId, storeFaces]);
 
   const deletePhoto = async (photoId: string) => {
     try {
@@ -329,6 +399,61 @@ function MatchPage() {
 
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
 
+      {/* Búsqueda con selfie */}
+      {photos.length > 0 && (
+        <section className="animate-rise-1 mt-5">
+          <button
+            type="button"
+            onClick={() => setShowSelfie(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-turf py-3.5 font-display text-sm font-semibold uppercase tracking-wide text-background shadow-[0_8px_24px_oklch(0.72_0.16_155/0.25)] transition-transform active:scale-95"
+          >
+            <ScanFace className="size-5" /> Buscar mis fotos con selfie
+          </button>
+          {filterIds !== null && (
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-turf/30 bg-turf/10 px-3 py-2">
+              <p className="text-xs text-turf">
+                {filterIds.length === 0
+                  ? "No encontramos fotos con esa cara."
+                  : `Mostrando ${filterIds.length} ${filterIds.length === 1 ? "foto" : "fotos"} donde apareces.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterIds(null);
+                  setIndex(null);
+                }}
+                className="shrink-0 rounded-lg border border-turf/40 px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-wide text-turf"
+              >
+                Ver todas
+              </button>
+            </div>
+          )}
+
+          {unlocked && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={indexExisting}
+                disabled={indexing.running}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card/60 py-2.5 font-display text-xs font-semibold uppercase tracking-wide text-muted-foreground disabled:opacity-60"
+              >
+                {indexing.running ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Analizando
+                    rostros · {indexing.done} de {indexing.total}
+                  </>
+                ) : (
+                  <>
+                    <ScanFace className="size-4" /> Analizar rostros de las
+                    fotos ya subidas
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Gallery */}
       <section className="animate-rise-2 mt-6">
         <div className="mb-2 flex items-center justify-between">
@@ -348,12 +473,14 @@ function MatchPage() {
           <div className="frost rounded-2xl border border-dashed border-border p-10 text-center">
             <Camera className="mx-auto size-8 text-muted-foreground/50" />
             <p className="mt-2 text-sm text-muted-foreground">
-              Este partido aún no tiene fotos.
+              {filterIds !== null
+                ? "No encontramos fotos con esa cara. Prueba con otro selfie."
+                : "Este partido aún no tiene fotos."}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {photos.map((p, i) =>
+            {visible.map((p, i) =>
               urls[p.storage_path] ? (
                 <button
                   key={p.id}
@@ -468,6 +595,17 @@ function MatchPage() {
             )}
           </div>
         </div>
+      )}
+
+      {showSelfie && (
+        <SelfieSearchModal
+          matchId={matchId}
+          onClose={() => setShowSelfie(false)}
+          onResults={(ids) => {
+            setFilterIds(ids);
+            setIndex(null);
+          }}
+        />
       )}
     </div>
   );
