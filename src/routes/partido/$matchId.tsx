@@ -195,8 +195,48 @@ function MatchPage() {
       queryClient.invalidateQueries({ queryKey: ["photo-counts"] });
       queryClient.invalidateQueries({ queryKey: ["covers"] });
     },
-    [matchId, queryClient, upload.running, getUploadUrl, savePhoto],
+    [matchId, queryClient, upload.running, getUploadUrl, savePhoto, storeFaces],
   );
+
+  /** Analiza los rostros de las fotos que ya estaban subidas. */
+  const indexExisting = useCallback(async () => {
+    if (indexing.running) return;
+    setError(null);
+    setIndexing({ total: 0, done: 0, running: true });
+    try {
+      const pending = await listPending({ data: { matchId } });
+      if (pending.length === 0) {
+        setIndexing({ total: 0, done: 0, running: false });
+        setError("Todas las fotos ya están analizadas.");
+        return;
+      }
+      const signed = await signPhotoUrls(pending.map((p) => p.storage_path));
+      let done = 0;
+      setIndexing({ total: pending.length, done: 0, running: true });
+      for (const p of pending) {
+        const url = signed[p.storage_path];
+        if (url) {
+          try {
+            const blob = await (await fetch(url)).blob();
+            const descriptors = await descriptorsFromBlob(blob);
+            if (descriptors.length > 0) {
+              await storeFaces({
+                data: { photoId: p.id, matchId, descriptors },
+              });
+            }
+          } catch {
+            // Sigue con la siguiente foto.
+          }
+        }
+        done += 1;
+        setIndexing({ total: pending.length, done, running: true });
+      }
+      setIndexing({ total: pending.length, done, running: false });
+    } catch {
+      setIndexing({ total: 0, done: 0, running: false });
+      setError("No se pudo analizar los rostros. Inténtalo otra vez.");
+    }
+  }, [indexing.running, listPending, matchId, storeFaces]);
 
   const deletePhoto = async (photoId: string) => {
     try {
