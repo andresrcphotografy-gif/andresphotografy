@@ -260,3 +260,33 @@ export const removeLike = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true as const };
   });
+
+/** Guarda los dorsales y las etiquetas de una foto (solo el fotógrafo). */
+export const setPhotoLabels = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { photoId: string; dorsals: number[]; tags: string[] }) => ({
+      photoId: String(data.photoId),
+      dorsals: Array.isArray(data.dorsals) ? data.dorsals : [],
+      tags: Array.isArray(data.tags) ? data.tags : [],
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requirePhotographer();
+    const dorsals = Array.from(
+      new Set(
+        data.dorsals
+          .map((n) => Math.trunc(Number(n)))
+          .filter((n) => Number.isFinite(n) && n >= 1 && n <= 100),
+      ),
+    ).sort((a, b) => a - b);
+    const tags = Array.from(
+      new Set(data.tags.map((t) => String(t)).filter((t) => t.length > 0)),
+    ).slice(0, 12);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("photos")
+      .update({ dorsals, tags })
+      .eq("id", data.photoId);
+    if (error) throw error;
+    return { ok: true as const, dorsals, tags };
+  });

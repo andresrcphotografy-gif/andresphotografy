@@ -159,24 +159,30 @@ export type Database = {
       photos: {
         Row: {
           created_at: string
+          dorsals: number[]
           file_name: string
           id: string
           match_id: string
           storage_path: string
+          tags: string[]
         }
         Insert: {
           created_at?: string
+          dorsals?: number[]
           file_name: string
           id?: string
           match_id: string
           storage_path: string
+          tags?: string[]
         }
         Update: {
           created_at?: string
+          dorsals?: number[]
           file_name?: string
           id?: string
           match_id?: string
           storage_path?: string
+          tags?: string[]
         }
         Relationships: [
           {

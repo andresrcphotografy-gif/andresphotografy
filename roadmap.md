@@ -11,4 +11,5 @@
 - [x] Me gusta (corazón) por carpeta + comentarios por partido — verificado en navegador
 - [x] Visor de fotos con paso (flechas, teclado, deslizar) — verificado en navegador
 - [x] Subida y borrado protegidos con la clave de Andrés (avisos de seguridad resueltos)
-- [ ] Conectar búsqueda por selfie en la página del partido + indexar rostros al subir
+- [x] Conectar búsqueda por selfie en la página del partido + indexar rostros al subir
+- [x] Filtro por dorsal (1-100) + etiquetas combinables, limpiar filtros, estado vacío, insignias de dorsal — verificado en móvil

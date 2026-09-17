@@ -34,6 +34,8 @@ import {
   usePhotographer,
 } from "@/components/PhotographerGate";
 import { SelfieSearchModal } from "@/components/SelfieSearchModal";
+import { GalleryFilters } from "@/components/GalleryFilters";
+import { PhotoLabels } from "@/components/PhotoLabels";
 import { descriptorsFromBlob } from "@/lib/face";
 import logoMark from "@/assets/logo-mark.png";
 import { MatchComments } from "@/components/MatchComments";
@@ -81,6 +83,8 @@ function MatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [showSelfie, setShowSelfie] = useState(false);
   const [filterIds, setFilterIds] = useState<string[] | null>(null);
+  const [dorsalQuery, setDorsalQuery] = useState("");
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [indexing, setIndexing] = useState<{
     total: number;
     done: number;
@@ -118,12 +122,29 @@ function MatchPage() {
     enabled: photos.length > 0,
   });
 
-  const visible =
-    filterIds === null
-      ? photos
-      : photos.filter((p) => new Set(filterIds).has(p.id));
+  const faceSet = filterIds === null ? null : new Set(filterIds);
+  const dorsalNumber = dorsalQuery === "" ? null : Number(dorsalQuery);
+  const visible = photos.filter((p) => {
+    if (faceSet && !faceSet.has(p.id)) return false;
+    if (dorsalNumber !== null && !(p.dorsals ?? []).includes(dorsalNumber))
+      return false;
+    if (tagFilters.length > 0) {
+      const t = p.tags ?? [];
+      if (!tagFilters.every((tag) => t.includes(tag))) return false;
+    }
+    return true;
+  });
   const total = visible.length;
   const current = index !== null ? visible[index] : undefined;
+  const hasLabelFilters = dorsalQuery !== "" || tagFilters.length > 0;
+  const hasAnyFilter = hasLabelFilters || filterIds !== null;
+
+  const clearFilters = () => {
+    setDorsalQuery("");
+    setTagFilters([]);
+    setFilterIds(null);
+    setIndex(null);
+  };
 
   const step = useCallback(
     (dir: 1 | -1) => {
@@ -465,6 +486,27 @@ function MatchPage() {
           </span>
         </div>
 
+        {photos.length > 0 && (
+          <div className="mb-3">
+            <GalleryFilters
+              dorsal={dorsalQuery}
+              onDorsalChange={(v) => {
+                setDorsalQuery(v);
+                setIndex(null);
+              }}
+              tags={tagFilters}
+              onToggleTag={(tag) => {
+                setIndex(null);
+                setTagFilters((t) =>
+                  t.includes(tag) ? t.filter((x) => x !== tag) : [...t, tag],
+                );
+              }}
+              hasFilters={hasAnyFilter}
+              onClear={clearFilters}
+            />
+          </div>
+        )}
+
         {loadingPhotos ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             Cargando fotos…
@@ -473,10 +515,23 @@ function MatchPage() {
           <div className="frost rounded-2xl border border-dashed border-border p-10 text-center">
             <Camera className="mx-auto size-8 text-muted-foreground/50" />
             <p className="mt-2 text-sm text-muted-foreground">
-              {filterIds !== null
-                ? "No encontramos fotos con esa cara. Prueba con otro selfie."
-                : "Este partido aún no tiene fotos."}
+              {photos.length === 0
+                ? "Este partido aún no tiene fotos."
+                : dorsalQuery !== ""
+                  ? `No se encontraron fotos para el dorsal #${dorsalQuery} en este partido.`
+                  : tagFilters.length > 0
+                    ? `No hay fotos de ${tagFilters.join(" + ")} en este partido.`
+                    : "No encontramos fotos con esa cara. Prueba con otro selfie."}
             </p>
+            {hasAnyFilter && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-3 inline-flex rounded-xl border border-turf/40 bg-turf/10 px-4 py-2 font-display text-[11px] font-semibold uppercase tracking-wide text-turf"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -495,6 +550,18 @@ function MatchPage() {
                     loading="lazy"
                     className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
+                  {(p.dorsals ?? []).length > 0 && (
+                    <span className="absolute left-1 top-1 flex flex-wrap gap-1">
+                      {(p.dorsals ?? []).slice(0, 3).map((d) => (
+                        <span
+                          key={d}
+                          className="rounded-md bg-background/80 px-1.5 py-0.5 font-display text-[10px] font-semibold text-turf backdrop-blur"
+                        >
+                          #{d}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </button>
               ) : (
                 <div
@@ -594,6 +661,37 @@ function MatchPage() {
               </>
             )}
           </div>
+          {((current.dorsals ?? []).length > 0 ||
+            (current.tags ?? []).length > 0) && (
+            <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
+              {(current.dorsals ?? []).map((d) => (
+                <span
+                  key={`d-${d}`}
+                  className="rounded-md border border-turf/40 bg-turf/10 px-2 py-0.5 font-display text-[11px] font-semibold text-turf"
+                >
+                  #{d}
+                </span>
+              ))}
+              {(current.tags ?? []).map((t) => (
+                <span
+                  key={`t-${t}`}
+                  className="rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11px] text-muted-foreground"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+          {unlocked && (
+            <PhotoLabels
+              photo={current}
+              onSaved={() => {
+                queryClient.invalidateQueries({
+                  queryKey: ["photos", matchId],
+                });
+              }}
+            />
+          )}
         </div>
       )}
 
