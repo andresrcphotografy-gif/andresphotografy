@@ -661,6 +661,37 @@ function MatchPage() {
               </>
             )}
           </div>
+          {((current.dorsals ?? []).length > 0 ||
+            (current.tags ?? []).length > 0) && (
+            <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
+              {(current.dorsals ?? []).map((d) => (
+                <span
+                  key={`d-${d}`}
+                  className="rounded-md border border-turf/40 bg-turf/10 px-2 py-0.5 font-display text-[11px] font-semibold text-turf"
+                >
+                  #{d}
+                </span>
+              ))}
+              {(current.tags ?? []).map((t) => (
+                <span
+                  key={`t-${t}`}
+                  className="rounded-full border border-border bg-card/60 px-2.5 py-0.5 text-[11px] text-muted-foreground"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+          {unlocked && (
+            <PhotoLabels
+              photo={current}
+              onSaved={() => {
+                queryClient.invalidateQueries({
+                  queryKey: ["photos", matchId],
+                });
+              }}
+            />
+          )}
         </div>
       )}
 
