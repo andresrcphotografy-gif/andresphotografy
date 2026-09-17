@@ -27,7 +27,19 @@ export interface Photo {
   storage_path: string;
   file_name: string;
   created_at: string;
+  dorsals: number[];
+  tags: string[];
 }
+
+/** Categorías fotográficas disponibles para etiquetar las fotos. */
+export const PHOTO_TAGS = [
+  "Goles",
+  "Paradas",
+  "Celebración",
+  "Acción",
+  "Retrato",
+  "Equipo",
+] as const;
 
 export interface FaceMatch {
   photo_id: string;
