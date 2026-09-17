@@ -34,6 +34,8 @@ import {
   usePhotographer,
 } from "@/components/PhotographerGate";
 import { SelfieSearchModal } from "@/components/SelfieSearchModal";
+import { GalleryFilters } from "@/components/GalleryFilters";
+import { PhotoLabels } from "@/components/PhotoLabels";
 import { descriptorsFromBlob } from "@/lib/face";
 import logoMark from "@/assets/logo-mark.png";
 import { MatchComments } from "@/components/MatchComments";
@@ -81,6 +83,8 @@ function MatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [showSelfie, setShowSelfie] = useState(false);
   const [filterIds, setFilterIds] = useState<string[] | null>(null);
+  const [dorsalQuery, setDorsalQuery] = useState("");
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
   const [indexing, setIndexing] = useState<{
     total: number;
     done: number;
@@ -118,12 +122,29 @@ function MatchPage() {
     enabled: photos.length > 0,
   });
 
-  const visible =
-    filterIds === null
-      ? photos
-      : photos.filter((p) => new Set(filterIds).has(p.id));
+  const faceSet = filterIds === null ? null : new Set(filterIds);
+  const dorsalNumber = dorsalQuery === "" ? null : Number(dorsalQuery);
+  const visible = photos.filter((p) => {
+    if (faceSet && !faceSet.has(p.id)) return false;
+    if (dorsalNumber !== null && !(p.dorsals ?? []).includes(dorsalNumber))
+      return false;
+    if (tagFilters.length > 0) {
+      const t = p.tags ?? [];
+      if (!tagFilters.every((tag) => t.includes(tag))) return false;
+    }
+    return true;
+  });
   const total = visible.length;
   const current = index !== null ? visible[index] : undefined;
+  const hasLabelFilters = dorsalQuery !== "" || tagFilters.length > 0;
+  const hasAnyFilter = hasLabelFilters || filterIds !== null;
+
+  const clearFilters = () => {
+    setDorsalQuery("");
+    setTagFilters([]);
+    setFilterIds(null);
+    setIndex(null);
+  };
 
   const step = useCallback(
     (dir: 1 | -1) => {
